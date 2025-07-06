@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How Good Do You Know Kyro?</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: black;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+    }
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      pointer-events: none;
+    }
+    button {
+      margin: 10px;
+      padding: 10px 20px;
+      font-size: 18px;
+      background: #222;
+      color: white;
+      border: 2px solid white;
+      border-radius: 8px;
+      cursor: pointer;
+      pointer-events: auto;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: white;
+      color: black;
+    }
+    input {
+      padding: 8px;
+      font-size: 18px;
+      margin-bottom: 20px;
+      pointer-events: auto;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="overlay"></div>
+  <audio id="bgm" src="background_music.mp3" loop></audio>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let state = 'username';
+    let username = '';
+    let mode = null;
+    let questionIndex = 0;
+    let score = 0;
+    let selected = null;
+
+    const QUESTIONS = {
+      easy: [
+        ["What color is Kyro's logo?", ["Red", "Blue", "Green"], 1],
+        ["Where is Kyro from?", ["Russia", "Germany", "Asia"], 2],
+        ["What's Kyro's favorite animal?", ["Cat", "Dog", "Fox"], 1],
+        ["How old is Kyro?", ["10-15", "15-17", "20-100"], 0],
+        ["What is Kyros favorite Game?", ["Roblox", "Valorant", "Furry Simulator"], 1],
+      ],
+      medium: [
+        ["When did Kyro start streaming?", ["2019", "2020", "2021"], 0],
+        ["Kyro's favorite drink?", ["Water", "Soda", "Coffee"], 2],
+        ["What's Kyro's main role?", ["Dev", "Animator", "Manager/Owner"], 2],
+        ["Kyro's favorite snack?", ["Feet", "Candy", "Ramen"], 2],
+        ["Kyro streams on?", ["YouTube", "Twitch", "Kick"], 1],
+      ]
+    };
+
+    const overlay = document.getElementById('overlay');
+    const bgm = document.getElementById('bgm');
+
+    // Starfield
+    const stars = Array.from({length: 80}, () => [
+      Math.random() * canvas.width,
+      Math.random() * canvas.height,
+      Math.random() * 2 + 1
+    ]);
+
+    function drawStars() {
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#88f';
+      stars.forEach(star => {
+        ctx.beginPath();
+        ctx.arc(star[0], star[1], star[2], 0, Math.PI * 2);
+        ctx.fill();
+        star[1] += star[2] * 0.3;
+        if (star[1] > canvas.height) {
+          star[0] = Math.random() * canvas.width;
+          star[1] = 0;
+        }
+      });
+    }
+
+    function updateOverlay() {
+      overlay.innerHTML = '';
+      if (state === 'username') {
+        const input = document.createElement('input');
+        input.placeholder = 'Enter username';
+        input.value = username;
+        input.oninput = e => username = e.target.value;
+        const btn = document.createElement('button');
+        btn.textContent = 'Continue';
+        btn.onclick = () => {
+          if (username.length > 1) {
+            state = 'menu';
+            updateOverlay();
+            bgm.play().catch(() => {});
+          }
+        };
+        overlay.append(input, btn);
+      }
+      else if (state === 'menu') {
+        const title = document.createElement('h1');
+        title.textContent = 'How good do you know Kyro?';
+        const easy = document.createElement('button');
+        easy.textContent = 'Easy';
+        easy.onclick = () => { mode = 'easy'; questionIndex = 0; score = 0; state = 'quiz'; updateOverlay(); };
+        const medium = document.createElement('button');
+        medium.textContent = 'Medium';
+        medium.onclick = () => { mode = 'medium'; questionIndex = 0; score = 0; state = 'quiz'; updateOverlay(); };
+        const hard = document.createElement('button');
+        hard.textContent = 'Hard (Coming Soon)';
+        hard.disabled = true;
+        overlay.append(title, easy, medium, hard);
+      }
+      else if (state === 'quiz') {
+        const [q, answers] = QUESTIONS[mode][questionIndex];
+        const qText = document.createElement('h2');
+        qText.textContent = `Q${questionIndex + 1}: ${q}`;
+        overlay.append(qText);
+        answers.forEach((ans, i) => {
+          const btn = document.createElement('button');
+          btn.textContent = ans;
+          btn.onclick = () => {
+            selected = i;
+            const correct = QUESTIONS[mode][questionIndex][2];
+            if (i === correct) score++;
+            questionIndex++;
+            if (questionIndex >= QUESTIONS[mode].length) state = 'result';
+            updateOverlay();
+          };
+          overlay.append(btn);
+        });
+      }
+      else if (state === 'result') {
+        const result = document.createElement('h2');
+        result.textContent = `${score}/5 right!`;
+        const close = document.createElement('button');
+        close.textContent = 'Close';
+        close.onclick = () => location.reload();
+        const share = document.createElement('button');
+        share.textContent = 'Share to Kyro!';
+        share.onclick = () => {
+          alert(`(Fake sharing) ${username} got ${score}/5 on ${mode} mode!`);
+          state = 'menu';
+          updateOverlay();
+        };
+        overlay.append(result, share, close);
+      }
+    }
+
+    function loop() {
+      drawStars();
+      requestAnimationFrame(loop);
+    }
+
+    updateOverlay();
+    loop();
+  </script>
+</body>
+</html>
